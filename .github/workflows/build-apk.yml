@@ -97,7 +97,10 @@ jobs:
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.key.outputs.pass }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ steps.key.outputs.pass }}
-        run: bubblewrap updateProject --skipVersionUpgrade --manifest=./twa-manifest.json
+        run: |
+          bubblewrap help || true
+          bubblewrap update --skipVersionUpgrade --manifest=./twa-manifest.json
+          ls -la
 
       - name: Build the APK
         env:
