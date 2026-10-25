@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gooden's Proof and Price</title>
-<meta name="description" content="Work out what each baked item costs you and what to sell it for.">
+<meta name="description" content="Work out what each baked item costs you and what to sell it for. Made by Andrew Gooden, BSc, MSc Candidate.">
+<meta name="author" content="Andrew Gooden">
 <meta name="theme-color" content="#0B7A47" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1310" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -259,6 +260,51 @@ input:focus-visible,select:focus-visible,button:focus-visible{
 @media (min-width:920px){ .tally{display:none} }
 
 footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-width:62ch}
+.byline{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink);font-size:13px}
+.byline b{font-weight:600}
+
+/* ---------- welcome screen ---------- */
+.welcome{
+  position:fixed;inset:0;z-index:50;overflow-y:auto;
+  background:var(--bg);
+  display:grid;place-items:center;
+  padding:max(20px, env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px))
+          max(20px, env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px));
+}
+.welcome-card{
+  width:100%;max-width:520px;background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;
+  padding:clamp(22px,5vw,34px);
+  box-shadow:0 24px 60px rgba(0,0,0,.10);
+}
+:root[data-theme="dark"] .welcome-card,
+:root:not([data-theme="light"]) .welcome-card{box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.welcome-mark{line-height:0;margin-bottom:16px}
+.welcome-eyebrow{
+  margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.welcome-title{
+  font-family:var(--display);font-weight:700;letter-spacing:-.025em;
+  font-size:clamp(27px,6.4vw,38px);line-height:1.04;margin:6px 0 0;
+}
+.welcome-lede{color:var(--muted);font-size:14.5px;line-height:1.55;margin:12px 0 0;max-width:46ch}
+.welcome-points{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:13px}
+.welcome-points li{display:flex;gap:12px;align-items:flex-start}
+.welcome-points span{
+  flex:0 0 auto;width:25px;height:25px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);
+  font-family:var(--mono);font-weight:600;font-size:12.5px;
+  display:grid;place-items:center;margin-top:1px;
+}
+.welcome-points div{font-size:13.5px;color:var(--muted);line-height:1.45;min-width:0}
+.welcome-points b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:1px}
+.welcome-go{width:100%;margin-top:24px;padding:13px;font-size:15.5px;border-radius:9px}
+.welcome-by{
+  margin:16px 0 0;padding-top:15px;border-top:1px solid var(--line);
+  text-align:center;font-size:13px;color:var(--muted);
+}
+.welcome-by b{color:var(--ink);font-weight:600}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -399,7 +445,40 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
 
   <footer class="note">
     Opens with an example banana-bread batch so you can see the shape of it — change any number and the slip updates. Saved batches live in this browser only.
+    <div class="byline">Made by <b>Andrew Gooden</b>, BSc, MSc Candidate</div>
   </footer>
+</div>
+
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <div class="welcome-mark" aria-hidden="true">
+      <svg viewBox="0 0 512 512" width="76" height="76">
+        <rect width="512" height="512" rx="104" fill="var(--accent)"/>
+        <path d="M128 96h256v300l-32 32-32-32-32 32-32-32-32 32-32-32-32 32-32-32z" fill="#F3F6F2"/>
+        <rect x="170" y="160" width="172" height="22" rx="11" fill="var(--accent)" opacity=".31"/>
+        <rect x="170" y="212" width="126" height="22" rx="11" fill="var(--accent)" opacity=".31"/>
+        <rect x="170" y="264" width="150" height="22" rx="11" fill="var(--accent)" opacity=".31"/>
+        <rect x="170" y="326" width="172" height="30" rx="15" fill="#D89A2C"/>
+      </svg>
+    </div>
+
+    <p class="welcome-eyebrow">Welcome to</p>
+    <h1 class="welcome-title">Gooden's Proof <span class="amp">and</span> Price</h1>
+    <p class="welcome-lede">
+      Stop guessing what to charge. Put in what you bought and how much the
+      batch actually used, and it works out what every item costs you — and
+      what to sell it for.
+    </p>
+
+    <ul class="welcome-points">
+      <li><span>1</span><div><b>Enter your shopping</b>Price the whole purchase: a hand of bananas, a 2&nbsp;kg bag of flour.</div></li>
+      <li><span>2</span><div><b>Say what the batch used</b>Three bananas, four cups. It converts between weight, volume and pieces.</div></li>
+      <li><span>3</span><div><b>Get your price</b>Cost per item, profit, real margin, and how many you sell to break even.</div></li>
+    </ul>
+
+    <button class="btn btn-primary welcome-go" id="welcomeGo" type="button">Start costing a batch</button>
+    <p class="welcome-by">Made by <b>Andrew Gooden</b>, BSc, MSc Candidate</p>
+  </div>
 </div>
 
 <script>
@@ -892,6 +971,25 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     document.getElementById("rounding").value   = String(state.rounding);
     setMode(state.mode || "markup");
   }
+
+  /* ---------------- welcome screen ---------------- */
+  // Shown the first time only; after that it would just be in the way.
+  var SEEN = "proofprice.welcomed";
+  var welcome = document.getElementById("welcome");
+  var seen = false;
+  try { seen = localStorage.getItem(SEEN) === "1"; } catch (e) {}
+  if (seen) {
+    welcome.hidden = true;
+  } else {
+    document.body.style.overflow = "hidden"; // don't scroll the app behind it
+  }
+  document.getElementById("welcomeGo").addEventListener("click", function () {
+    welcome.hidden = true;
+    document.body.style.overflow = "";
+    try { localStorage.setItem(SEEN, "1"); } catch (e) {}
+    var first = rowsEl.querySelector("input");
+    if (first) first.focus();
+  });
 
   /* ---------------- boot ---------------- */
   document.getElementById("recipeName").value = "Banana bread";

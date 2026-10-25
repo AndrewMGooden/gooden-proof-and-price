@@ -1,6 +1,6 @@
 // Offline cache for Gooden's Proof and Price.
 // Bump CACHE when you change the app so phones pick up the new version.
-var CACHE = "proof-and-price-v1";
+var CACHE = "proof-and-price-v2";
 var CORE = [
   "./",
   "./index.html",
