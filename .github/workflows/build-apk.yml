@@ -102,20 +102,55 @@ jobs:
           bubblewrap update --skipVersionUpgrade --manifest=./twa-manifest.json
           ls -la
 
-      - name: Build the APK
-        env:
-          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.key.outputs.pass }}
-          BUBBLEWRAP_KEY_PASSWORD: ${{ steps.key.outputs.pass }}
-        run: bubblewrap build --skipPwaValidation --skipVersionUpgrade
-
-      - name: Collect the outputs
-        id: out
+      # Bubblewrap's own build step rejects the runner's SDK layout — it looks
+      # for the legacy tools/ folder Google removed. The project it generated
+      # is a normal Gradle project, so build and sign it directly.
+      - name: Build with Gradle
         run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          find . -name "*.apk" -path "*/outputs/*"
+
+      - name: Sign the APK
+        env:
+          PASS: ${{ steps.key.outputs.pass }}
+        run: |
+          BT=$(ls -1 "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
+          echo "Using build-tools $BT"
+          UNSIGNED=$(find . -path "*/outputs/apk/release/*.apk" | head -1)
+          echo "Unsigned APK: $UNSIGNED"
           mkdir -p dist
-          find . -name "*.apk" -not -path "./dist/*" -exec cp {} dist/ \;
-          cp assetlinks.json dist/ 2>/dev/null || true
+          "$ANDROID_SDK_ROOT/build-tools/$BT/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
+          "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign \
+            --ks android.keystore \
+            --ks-key-alias proofandprice \
+            --ks-pass "pass:$PASS" \
+            --key-pass "pass:$PASS" \
+            --out "dist/gooden-proof-and-price.apk" \
+            aligned.apk
+          "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" verify --print-certs dist/gooden-proof-and-price.apk
           ls -la dist
-          echo "apk=$(find dist -name '*.apk' | head -1)" >> "$GITHUB_OUTPUT"
+
+      # Needed at /.well-known/assetlinks.json on the site, otherwise the app
+      # runs with a browser address bar pinned across the top.
+      - name: Write assetlinks.json
+        env:
+          PASS: ${{ steps.key.outputs.pass }}
+        run: |
+          FP=$(keytool -list -v -keystore android.keystore -alias proofandprice \
+                -storepass "$PASS" | grep -m1 "SHA256:" | awk '{print $2}')
+          echo "Fingerprint: $FP"
+          cat > dist/assetlinks.json <<EOF
+          [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+              "namespace": "android_app",
+              "package_name": "io.github.andrewmgooden.proofandprice",
+              "sha256_cert_fingerprints": ["$FP"]
+            }
+          }]
+          EOF
+          cat dist/assetlinks.json
 
       # Private to repo collaborators — never attached to the public release.
       - name: Keep the signing key as a private artifact
