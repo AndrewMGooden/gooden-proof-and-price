@@ -1,0 +1,130 @@
+name: Build Android APK
+
+# Builds a signed, installable APK and attaches it to a GitHub Release,
+# so it can be downloaded straight onto a phone.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "twa-manifest.json"
+      - "icon-*.png"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli@1.22.0
+
+      # Reuse the saved signing key when one exists, otherwise make a throwaway.
+      # A throwaway key still installs fine, but a later build signed with a
+      # different key cannot update it — Android treats that as a different app.
+      - name: Prepare signing key
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android.keystore
+            echo "pass=$KEYSTORE_PASSWORD" >> "$GITHUB_OUTPUT"
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+            echo "Using the saved signing key."
+          else
+            PASS="proofandprice"
+            keytool -genkeypair -v \
+              -keystore android.keystore \
+              -alias proofandprice \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$PASS" -keypass "$PASS" \
+              -dname "CN=Gooden's Proof and Price, O=AndrewMGooden, L=Negril, C=JM"
+            echo "pass=$PASS" >> "$GITHUB_OUTPUT"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            echo "No saved key found, generated a throwaway one."
+          fi
+
+      - name: Stamp the version from the run number
+        run: |
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync("twa-manifest.json", "utf8"));
+            m.appVersionCode = Number(process.env.GITHUB_RUN_NUMBER);
+            m.appVersionName = "1.0." + process.env.GITHUB_RUN_NUMBER;
+            m.appVersion = m.appVersionName;
+            fs.writeFileSync("twa-manifest.json", JSON.stringify(m, null, 2));
+          '
+
+      - name: Point Bubblewrap at the preinstalled JDK and SDK
+        run: |
+          mkdir -p "$HOME/.bubblewrap"
+          cat > "$HOME/.bubblewrap/config.json" <<EOF
+          { "jdkPath": "$JAVA_HOME", "androidSdkPath": "$ANDROID_SDK_ROOT" }
+          EOF
+
+      - name: Build the APK
+        run: |
+          yes | bubblewrap build \
+            --skipPwaValidation \
+            --skipVersionUpgrade \
+            --signingKeyPath=android.keystore \
+            --signingKeyAlias=proofandprice \
+          || bubblewrap build --skipPwaValidation --skipVersionUpgrade
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.key.outputs.pass }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ steps.key.outputs.pass }}
+
+      - name: Collect the outputs
+        id: out
+        run: |
+          mkdir -p dist
+          find . -name "*.apk" -not -path "./dist/*" -exec cp {} dist/ \;
+          cp assetlinks.json dist/ 2>/dev/null || true
+          ls -la dist
+          echo "apk=$(find dist -name '*.apk' | head -1)" >> "$GITHUB_OUTPUT"
+
+      # Private to repo collaborators — never attached to the public release.
+      - name: Keep the signing key as a private artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-key-KEEP-THIS-SAFE
+          path: android.keystore
+          retention-days: 90
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Proof and Price 1.0.${{ github.run_number }}
+          body: |
+            Android app for Gooden's Proof and Price.
+
+            **Install:** download the `.apk` below on your phone, tap it, and
+            allow installs from unknown sources when prompted.
+
+            Stable signing key in use: ${{ steps.key.outputs.stable }}
+          files: |
+            dist/*.apk
+            dist/assetlinks.json
