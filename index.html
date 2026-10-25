@@ -137,7 +137,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{
 }
 .del:hover{border-color:var(--danger);color:var(--danger)}
 
-.ing-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px}
+.ing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:10px}
 @media (max-width:620px){ .ing-grid{grid-template-columns:minmax(0,1fr)} }
 .grp{border:1px solid var(--line);border-radius:8px;padding:9px 10px 10px;margin:0;background:var(--surface);min-width:0}
 .grp legend{
@@ -145,6 +145,9 @@ input:focus-visible,select:focus-visible,button:focus-visible{
   color:var(--muted);padding:0 5px;
 }
 .grp.used legend{color:var(--accent)}
+.grp.conv legend{color:var(--gold)}
+.grp.conv{border-color:var(--gold);background:var(--gold-soft)}
+.ing-note i{font-style:normal;color:var(--gold)}
 .grp-cols{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(78px,1fr))}
 
 .ing-foot{
@@ -386,10 +389,63 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     return "count";
   }
   function toBase(q,u){ var f=familyOf(u); return (Number(q)||0) * UNITS[f][u]; }
-  function unitOptions(family,selected){
-    var out="";
-    for(var u in UNITS[family]){
-      out += '<option value="'+u+'"'+(u===selected?' selected':'')+'>'+u+'</option>';
+
+  var ML_PER_CUP = 236.588;
+  var GROUPS = { weight:"Weight", volume:"Volume", count:"Count" };
+
+  // grams in one cup, matched on the ingredient name (longest/most specific first)
+  var DENSITY = [
+    ["bread flour",127],["cake flour",114],["whole wheat",120],["flour",125],
+    ["icing sugar",120],["powdered sugar",120],["confectioner",120],
+    ["brown sugar",213],["sugar",200],
+    ["butter",227],["margarine",227],["shortening",205],["lard",205],
+    ["oil",218],
+    ["condensed milk",306],["evaporated milk",252],["coconut milk",240],["milk",244],
+    ["water",237],
+    ["honey",340],["molasses",337],["syrup",322],
+    ["cocoa",85],["chocolate chip",170],["chocolate",170],
+    ["baking powder",192],["baking soda",220],["corn starch",128],["cornstarch",128],
+    ["salt",273],["yeast",150],
+    ["cornmeal",157],["oats",90],["rice",185],["breadcrumb",108],
+    ["raisin",145],["coconut",93],["nutmeg",110],["cinnamon",132],["ginger",96],
+    ["cream cheese",232],["sour cream",240],["yogurt",245],["cream",238],
+    ["vanilla",208],["extract",208],["essence",208],
+    ["peanut butter",258],["jam",320],
+    ["egg",243]
+  ];
+  // grams in one of something you buy by the piece
+  var PER_ITEM = [
+    ["egg",50],["banana",118],["lemon",58],["lime",44],["orange",131],
+    ["apple",182],["carrot",61],["potato",213],["onion",110]
+  ];
+  function lookup(table,name,fallback){
+    var n = String(name||"").toLowerCase();
+    for(var i=0;i<table.length;i++){ if(n.indexOf(table[i][0]) > -1) return table[i][1]; }
+    return fallback;
+  }
+  function effGPerCup(r){
+    var v = Number(r.gPerCup);
+    return (r.gPerCup !== "" && r.gPerCup != null && isFinite(v) && v > 0) ? v : lookup(DENSITY, r.name, 240);
+  }
+  function effGPerItem(r){
+    var v = Number(r.gPerItem);
+    return (r.gPerItem !== "" && r.gPerItem != null && isFinite(v) && v > 0) ? v : lookup(PER_ITEM, r.name, 0);
+  }
+  // everything becomes grams, so any unit can be compared with any other
+  function toGrams(q,u,gpc,gpi){
+    var f = familyOf(u), base = toBase(q,u);
+    if(f === "weight") return base;
+    if(f === "volume") return base * (gpc / ML_PER_CUP);
+    return base * gpi;
+  }
+  function allUnitOptions(selected){
+    var out = "";
+    for(var f in UNITS){
+      out += '<optgroup label="'+GROUPS[f]+'">';
+      for(var u in UNITS[f]){
+        out += '<option value="'+u+'"'+(u===selected?' selected':'')+'>'+u+'</option>';
+      }
+      out += '</optgroup>';
     }
     return out;
   }
@@ -408,7 +464,8 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
   /* ---------------- state ---------------- */
   var uid = 0;
   function ing(name,bq,bu,price,uq,uu){
-    return { id:"i"+(++uid), name:name, boughtQty:bq, boughtUnit:bu, price:price, usedQty:uq, usedUnit:uu };
+    return { id:"i"+(++uid), name:name, boughtQty:bq, boughtUnit:bu, price:price,
+             usedQty:uq, usedUnit:uu, gPerCup:"", gPerItem:"" };
   }
   function sampleState(){
     return {
@@ -417,12 +474,12 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
       mode:"markup", markup:200, margin:65, rounding:10,
       ingredients:[
         ing("Bananas",12,"each",350,3,"each"),
-        ing("Flour",2,"kg",420,500,"g"),
-        ing("Brown sugar",1,"kg",280,250,"g"),
+        ing("Flour",2,"kg",420,4,"cup"),
+        ing("Brown sugar",1,"kg",280,1,"cup"),
         ing("Butter",454,"g",690,115,"g"),
         ing("Eggs",12,"each",600,2,"each"),
-        ing("Vanilla",60,"ml",390,10,"ml"),
-        ing("Baking soda",450,"g",260,5,"g")
+        ing("Vanilla",60,"ml",390,2,"tsp"),
+        ing("Baking soda",450,"g",260,1,"tsp")
       ]
     };
   }
@@ -436,24 +493,38 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
 
   /* ---------------- math ---------------- */
   function rowCost(r){
-    var boughtBase = toBase(r.boughtQty, r.boughtUnit);
-    var usedBase   = toBase(r.usedQty, r.usedUnit);
-    var price      = Number(r.price)||0;
-    var perBase    = boughtBase > 0 ? price/boughtBase : 0;
+    var gpc = effGPerCup(r), gpi = effGPerItem(r);
+    var bf  = familyOf(r.boughtUnit), uf = familyOf(r.usedUnit);
+    var cross = bf !== uf;
+
+    var boughtG = toGrams(r.boughtQty, r.boughtUnit, gpc, gpi);
+    var usedG   = toGrams(r.usedQty,   r.usedUnit,   gpc, gpi);
+    var price   = Number(r.price)||0;
+    var perG    = boughtG > 0 ? price/boughtG : 0;
+
+    var gPerBoughtUnit = toGrams(1, r.boughtUnit, gpc, gpi);
+    var leftG = boughtG - usedG;
+
     return {
-      boughtBase:boughtBase, usedBase:usedBase, perBase:perBase,
-      cost: perBase * usedBase,
-      leftBase: boughtBase - usedBase,
-      leftValue: perBase * (boughtBase - usedBase),
-      over: usedBase > boughtBase + 1e-9
+      cross: cross,
+      needsDensity: cross && (bf === "volume" || uf === "volume"),
+      needsPerItem: cross && (bf === "count"  || uf === "count"),
+      unknown: cross && (bf === "count" || uf === "count") && !(gpi > 0),
+      gpc: gpc, gpi: gpi,
+      boughtG: boughtG, usedG: usedG, perG: perG,
+      cost: perG * usedG,
+      leftBought: gPerBoughtUnit > 0 ? leftG / gPerBoughtUnit : 0,
+      leftValue: perG * leftG,
+      over: usedG > boughtG + 1e-9
     };
   }
   function compute(){
-    var ingredients = 0, over = false;
+    var ingredients = 0, over = false, unknown = false;
     for(var i=0;i<state.ingredients.length;i++){
       var c = rowCost(state.ingredients[i]);
       ingredients += c.cost;
       if(c.over) over = true;
+      if(c.unknown) unknown = true;
     }
     var n          = Math.max(1, Math.floor(Number(state.yieldCount)||1));
     var packaging  = (Number(state.packaging)||0) * n;
@@ -480,7 +551,7 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     return { ingredients:ingredients, packaging:packaging, extras:extras, labour:labour,
              batch:batch, perItem:perItem, n:n, raw:raw, price:price,
              profitItem:profitItem, profitBatch:profitBatch, realMargin:realMargin,
-             breakEven:breakEven, over:over };
+             breakEven:breakEven, over:over, unknown:unknown };
   }
 
   /* ---------------- rendering ---------------- */
@@ -490,7 +561,18 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     var html = "";
     for(var i=0;i<state.ingredients.length;i++){
       var r = state.ingredients[i];
-      var fam = familyOf(r.boughtUnit);
+      var c0 = rowCost(r);
+      var conv = "";
+      if(c0.cross){
+        var bits = "";
+        if(c0.needsDensity){
+          bits += '<label class="field"><span>1 cup weighs (g)</span><input type="number" id="'+r.id+'-gpc" data-k="gPerCup" min="0" step="any" inputmode="decimal" placeholder="auto" value="'+escAttr(r.gPerCup)+'"></label>';
+        }
+        if(c0.needsPerItem){
+          bits += '<label class="field"><span>1 piece weighs (g)</span><input type="number" id="'+r.id+'-gpi" data-k="gPerItem" min="0" step="any" inputmode="decimal" placeholder="'+(c0.gpi>0?"auto":"set this")+'" value="'+escAttr(r.gPerItem)+'"></label>';
+        }
+        conv = '<fieldset class="grp conv"><legend>Converting</legend><div class="grp-cols">'+bits+'</div></fieldset>';
+      }
       html +=
         '<div class="ing" data-id="'+r.id+'">'+
           '<div class="ing-head">'+
@@ -500,13 +582,14 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
           '<div class="ing-grid">'+
             '<fieldset class="grp"><legend>Bought</legend><div class="grp-cols">'+
               '<label class="field"><span>Amount</span><input type="number" id="'+r.id+'-bq" data-k="boughtQty" min="0" step="any" inputmode="decimal" value="'+r.boughtQty+'"></label>'+
-              '<label class="field"><span>Unit</span><select id="'+r.id+'-bu" data-k="boughtUnit">'+unitOptions(fam,r.boughtUnit)+optGroupsOther(fam)+'</select></label>'+
+              '<label class="field"><span>Unit</span><select id="'+r.id+'-bu" data-k="boughtUnit">'+allUnitOptions(r.boughtUnit)+'</select></label>'+
               '<label class="field"><span>Price paid</span><input type="number" id="'+r.id+'-p" data-k="price" min="0" step="any" inputmode="decimal" value="'+r.price+'"></label>'+
             '</div></fieldset>'+
             '<fieldset class="grp used"><legend>Used in batch</legend><div class="grp-cols">'+
               '<label class="field"><span>Amount</span><input type="number" id="'+r.id+'-uq" data-k="usedQty" min="0" step="any" inputmode="decimal" value="'+r.usedQty+'"></label>'+
-              '<label class="field"><span>Unit</span><select id="'+r.id+'-uu" data-k="usedUnit">'+unitOptions(fam,r.usedUnit)+'</select></label>'+
+              '<label class="field"><span>Unit</span><select id="'+r.id+'-uu" data-k="usedUnit">'+allUnitOptions(r.usedUnit)+'</select></label>'+
             '</div></fieldset>'+
+            conv+
           '</div>'+
           '<div class="ing-foot">'+
             '<span class="ing-cost" id="'+r.id+'-cost">—</span>'+
@@ -518,15 +601,6 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     recalc();
   }
 
-  // lets you switch an ingredient between families (e.g. "each" -> "g")
-  function optGroupsOther(current){
-    var out = "";
-    for(var f in UNITS){
-      if(f === current) continue;
-      for(var u in UNITS[f]) out += '<option value="'+u+'">'+u+'</option>';
-    }
-    return out;
-  }
   function escAttr(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
 
   function recalc(){
@@ -537,16 +611,25 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
       var card   = rowsEl.querySelector('[data-id="'+r.id+'"]');
       if(!costEl) continue;
       costEl.textContent = money(c.cost);
-      if(c.over){
+      var rate = "";
+      if(c.cross){
+        var parts = [];
+        if(c.needsDensity) parts.push("1 cup = " + qty(c.gpc) + " g");
+        if(c.needsPerItem && c.gpi > 0) parts.push("1 piece = " + qty(c.gpi) + " g");
+        if(parts.length) rate = " &middot; <i>" + parts.join(", ") + "</i>";
+      }
+      if(c.unknown){
+        noteEl.innerHTML = "tell it what one piece weighs so it can convert to " + r.usedUnit;
+      } else if(c.over){
         noteEl.innerHTML = "needs more than you bought — buy about <b>" +
-          qty(Math.ceil(c.usedBase / (c.boughtBase||1))) + "&times;</b> that purchase";
+          qty(Math.ceil(c.usedG / (c.boughtG||1))) + "&times;</b> that purchase" + rate;
       } else {
         noteEl.innerHTML = "used <b>" + qty(Number(r.usedQty)||0) + " " + r.usedUnit + "</b> of " +
           qty(Number(r.boughtQty)||0) + " " + r.boughtUnit +
-          " &middot; <b>" + qty(c.leftBase / UNITS[familyOf(r.usedUnit)][r.usedUnit]) + " " + r.usedUnit +
-          "</b> left worth <b>" + money(c.leftValue) + "</b>";
+          " &middot; <b>" + qty(c.leftBought) + " " + r.boughtUnit +
+          "</b> left worth <b>" + money(c.leftValue) + "</b>" + rate;
       }
-      if(card) card.classList.toggle("over", c.over);
+      if(card) card.classList.toggle("over", c.over || c.unknown);
     }
 
     var t = compute();
@@ -575,7 +658,8 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
 
     var flag = document.getElementById("flag");
     var msg = "", bad = false;
-    if(t.over){ msg = "One or more ingredients use more than you bought. Fix the amounts or buy more."; bad = true; }
+    if(t.unknown){ msg = "An ingredient bought by the piece is measured by weight or volume. Fill in what one piece weighs."; bad = true; }
+    else if(t.over){ msg = "One or more ingredients use more than you bought. Fix the amounts or buy more."; bad = true; }
     else if(t.profitItem <= 0){ msg = "At this price you lose money on every " + single + ". Raise the markup."; bad = true; }
     else if(!(Number(state.labourRate)||0)){ msg = "Your time is costing you nothing right now. Put an hourly rate in to price it properly."; }
     flag.hidden = !msg;
@@ -601,12 +685,7 @@ footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-widt
     var card = e.target.closest(".ing");
     var r = find(card.getAttribute("data-id")); if(!r) return;
     r[k] = e.target.value;
-    if(k === "boughtUnit" && familyOf(r.usedUnit) !== familyOf(r.boughtUnit)){
-      r.usedUnit = r.boughtUnit;
-      renderRows();
-      return;
-    }
-    recalc();
+    renderRows(); // the conversion box appears or disappears with the unit pair
   });
   rowsEl.addEventListener("click", function(e){
     var id = e.target.getAttribute("data-del"); if(!id) return;
