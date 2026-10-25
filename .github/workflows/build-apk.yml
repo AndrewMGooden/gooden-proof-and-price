@@ -33,8 +33,15 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The runner already ships the Android SDK. The setup-android action
+      # fails trying to install the long-removed "tools" package, so use the
+      # preinstalled SDK directly and just accept the licences.
+      - name: Use the preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "Android SDK at: $ANDROID_SDK_ROOT"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          ls "$ANDROID_SDK_ROOT"
 
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli@1.22.0
@@ -84,17 +91,19 @@ jobs:
           { "jdkPath": "$JAVA_HOME", "androidSdkPath": "$ANDROID_SDK_ROOT" }
           EOF
 
-      - name: Build the APK
-        run: |
-          yes | bubblewrap build \
-            --skipPwaValidation \
-            --skipVersionUpgrade \
-            --signingKeyPath=android.keystore \
-            --signingKeyAlias=proofandprice \
-          || bubblewrap build --skipPwaValidation --skipVersionUpgrade
+      # twa-manifest.json holds the config; updateProject turns it into a real
+      # Android project, then build runs Gradle over it.
+      - name: Generate the Android project
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.key.outputs.pass }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ steps.key.outputs.pass }}
+        run: bubblewrap updateProject --skipVersionUpgrade --manifest=./twa-manifest.json
+
+      - name: Build the APK
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.key.outputs.pass }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ steps.key.outputs.pass }}
+        run: bubblewrap build --skipPwaValidation --skipVersionUpgrade
 
       - name: Collect the outputs
         id: out
