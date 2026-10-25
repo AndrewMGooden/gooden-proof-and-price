@@ -33,7 +33,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://andrewmgooden.github.io/gooden-proof-and-price/",
-  "minSdkVersion": 23,
+  "minSdkVersion": 24,
   "orientationLockEnabled": false,
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
