@@ -1,0 +1,757 @@
+<title>Gooden's Proof and Price</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* Layout: a ledger of purchases on the left, a running costing slip on the right
+   that sticks while you work. On phones the slip collapses to a bottom tally bar. */
+:root{
+  --bg:#F3F6F2;
+  --surface:#FFFFFF;
+  --surface-2:#EAEFE9;
+  --ink:#131E18;
+  --muted:#5D6C63;
+  --line:#D9E1D9;
+  --accent:#0B7A47;
+  --accent-soft:#E1F1E6;
+  --gold:#9A6512;
+  --gold-soft:#F7EDD9;
+  --danger:#AF2A20;
+  --danger-soft:#FBE6E4;
+
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1310;
+    --surface:#151E19;
+    --surface-2:#1C2721;
+    --ink:#E7EFE9;
+    --muted:#95A69B;
+    --line:#26332C;
+    --accent:#4ECB8C;
+    --accent-soft:#14301F;
+    --gold:#E2AC52;
+    --gold-soft:#2E2413;
+    --danger:#F08B82;
+    --danger-soft:#331A17;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1310;
+  --surface:#151E19;
+  --surface-2:#1C2721;
+  --ink:#E7EFE9;
+  --muted:#95A69B;
+  --line:#26332C;
+  --accent:#4ECB8C;
+  --accent-soft:#14301F;
+  --gold:#E2AC52;
+  --gold-soft:#2E2413;
+  --danger:#F08B82;
+  --danger-soft:#331A17;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{
+  max-width:1120px;
+  margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:22px 0;
+}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+
+/* ---------- header ---------- */
+.masthead{
+  display:flex;flex-wrap:wrap;gap:14px 20px;
+  align-items:flex-end;justify-content:space-between;
+  padding-bottom:16px;border-bottom:2px solid var(--ink);
+}
+.brand{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,36px);letter-spacing:-.02em;line-height:1.05}
+.brand .amp{color:var(--accent)}
+.tagline{color:var(--muted);font-size:13.5px;margin:4px 0 0;max-width:46ch}
+.currency-pick{display:flex;align-items:center;gap:8px}
+.currency-pick label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* ---------- shared controls ---------- */
+input,select,button{font:inherit;color:inherit}
+input[type=text],input[type=number],select{
+  width:100%;background:var(--surface);color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;
+  padding:8px 9px;min-width:0;
+}
+input[type=number]{font-family:var(--mono);font-variant-numeric:tabular-nums}
+select{background:var(--surface);cursor:pointer}
+input:focus-visible,select:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+.btn{
+  background:var(--surface);border:1px solid var(--line);border-radius:7px;
+  padding:8px 13px;cursor:pointer;font-weight:500;font-size:14px;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+:root[data-theme="dark"] .btn-primary,
+:root:not([data-theme="light"]) .btn-primary{color:#07140D}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn-primary{color:#fff}}
+.btn-primary:hover{opacity:.9;color:inherit}
+.btn-ghost{background:transparent}
+
+/* ---------- panels ---------- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding-block:20px 0}
+@media (min-width:920px){ .layout{grid-template-columns:minmax(0,1fr) 352px;align-items:start} }
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.panel-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.panel-head h2{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.panel-head .hint{font-size:12.5px;color:var(--muted)}
+
+/* ---------- ingredient cards ---------- */
+.ing-list{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.ing{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg)}
+.ing.over{border-color:var(--danger);background:var(--danger-soft)}
+.ing-head{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.ing-head input{font-weight:600}
+.del{
+  flex:0 0 auto;width:32px;height:32px;border-radius:7px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--muted);
+  font-size:17px;line-height:1;display:grid;place-items:center;
+}
+.del:hover{border-color:var(--danger);color:var(--danger)}
+
+.ing-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px}
+@media (max-width:620px){ .ing-grid{grid-template-columns:minmax(0,1fr)} }
+.grp{border:1px solid var(--line);border-radius:8px;padding:9px 10px 10px;margin:0;background:var(--surface);min-width:0}
+.grp legend{
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+  color:var(--muted);padding:0 5px;
+}
+.grp.used legend{color:var(--accent)}
+.grp-cols{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(78px,1fr))}
+
+.ing-foot{
+  display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;
+  margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+}
+.ing-cost{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;font-size:15px}
+.ing-note{font-size:12.5px;color:var(--muted)}
+.ing-note b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+.ing.over .ing-note{color:var(--danger)}
+
+.add-row{margin-top:12px}
+
+/* ---------- batch + pricing blocks ---------- */
+.block{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.block h3{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+.grid-3{display:grid;gap:11px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.yield-line{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.yield-line .field{flex:1 1 110px}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{background:transparent;border:0;padding:7px 14px;cursor:pointer;font-size:13.5px;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+/* ---------- summary slip ---------- */
+.slip{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 14px)}
+.slip .lines{display:flex;flex-direction:column;gap:0;margin-top:12px}
+.line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dotted var(--line);font-size:14px}
+.line .lbl{color:var(--muted);min-width:0}
+.line .val{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.line.total{border-bottom:2px solid var(--ink);font-weight:600}
+.line.total .lbl{color:var(--ink)}
+
+.price-card{
+  margin-top:16px;border-radius:10px;padding:14px 15px;
+  background:var(--accent-soft);border:1px solid var(--accent);
+}
+.price-card .cap{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--accent)}
+.price-big{
+  font-family:var(--display);font-weight:700;letter-spacing:-.025em;
+  font-size:clamp(34px,8vw,44px);line-height:1.05;margin-top:4px;
+  font-variant-numeric:tabular-nums;
+}
+.price-sub{font-size:13px;color:var(--muted);margin-top:5px}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.stat{background:var(--surface-2);border-radius:9px;padding:10px 11px}
+.stat .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stat .v{font-family:var(--mono);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums;margin-top:3px}
+.stat.good .v{color:var(--accent)}
+.stat.warn .v{color:var(--gold)}
+.stat.bad .v{color:var(--danger)}
+
+.flag{
+  margin-top:13px;border-radius:8px;padding:9px 11px;font-size:13px;
+  background:var(--gold-soft);border:1px solid var(--gold);color:var(--gold);
+}
+.flag.bad{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.slip-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.slip-actions .btn{flex:1 1 auto}
+
+/* ---------- recipe bar ---------- */
+.recipes{
+  margin-top:18px;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:13px 14px;
+}
+.recipes-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end}
+.recipes .row2{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- mobile tally bar ---------- */
+.tally{
+  position:sticky;bottom:0;z-index:9;margin-top:20px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--surface);border:1px solid var(--line);border-bottom:0;
+  border-radius:12px 12px 0 0;
+  padding:11px 14px;
+  padding-bottom:calc(11px + env(safe-area-inset-bottom, 0px));
+  box-shadow:0 -6px 20px rgba(0,0,0,.08);
+}
+.tally .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tally .v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;font-size:17px}
+.tally .v.sell{color:var(--accent);font-size:20px}
+@media (min-width:920px){ .tally{display:none} }
+
+footer.note{color:var(--muted);font-size:12.5px;padding-block:18px 26px;max-width:62ch}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1 class="brand">Gooden's Proof <span class="amp">and</span> Price</h1>
+      <p class="tagline">Enter what you bought and how much of it the batch ate. It works out what each item really costs you, and what to sell it for.</p>
+    </div>
+    <div class="currency-pick">
+      <label for="currency">Currency</label>
+      <select id="currency" style="width:auto">
+        <option value="JMD">J$ &middot; Jamaican dollar</option>
+        <option value="USD">$ &middot; US dollar</option>
+        <option value="TTD">TT$ &middot; Trinidad dollar</option>
+        <option value="XCD">EC$ &middot; East Caribbean</option>
+        <option value="CAD">C$ &middot; Canadian dollar</option>
+        <option value="GBP">&pound; &middot; Pound sterling</option>
+        <option value="EUR">&euro; &middot; Euro</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>What you bought</h2>
+        <span class="hint">Price the whole purchase, then say how much the batch used.</span>
+      </div>
+
+      <div class="ing-list" id="rows"></div>
+      <div class="add-row"><button class="btn" id="add">+ Add ingredient</button></div>
+
+      <div class="block">
+        <h3>This batch</h3>
+        <div class="yield-line">
+          <label class="field" style="flex:0 1 120px"><span>Makes</span>
+            <input type="number" id="yield" min="1" step="1" inputmode="numeric"></label>
+          <label class="field" style="flex:1 1 150px"><span>Of what</span>
+            <input type="text" id="itemName" placeholder="slices, muffins, loaves"></label>
+        </div>
+        <div class="grid-3" style="margin-top:11px">
+          <label class="field"><span>Packaging per item</span>
+            <input type="number" id="packaging" min="0" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Gas / power per batch</span>
+            <input type="number" id="batchExtras" min="0" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Hours of your time</span>
+            <input type="number" id="labourHours" min="0" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Your rate per hour</span>
+            <input type="number" id="labourRate" min="0" step="any" inputmode="decimal"></label>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>How you want to price it</h3>
+        <div class="seg" role="group" aria-label="Pricing method">
+          <button type="button" id="modeMarkup" aria-pressed="true">Mark up the cost</button>
+          <button type="button" id="modeMargin" aria-pressed="false">Target a margin</button>
+        </div>
+        <div class="grid-3" style="margin-top:12px">
+          <label class="field" id="markupField"><span>Markup %</span>
+            <input type="number" id="markup" min="0" step="any" inputmode="decimal"></label>
+          <label class="field" id="marginField" hidden><span>Margin % of sale price</span>
+            <input type="number" id="margin" min="0" max="99" step="any" inputmode="decimal"></label>
+          <label class="field"><span>Round price up to</span>
+            <select id="rounding">
+              <option value="0">No rounding</option>
+              <option value="5">Nearest 5</option>
+              <option value="10">Nearest 10</option>
+              <option value="25">Nearest 25</option>
+              <option value="50">Nearest 50</option>
+              <option value="100">Nearest 100</option>
+            </select></label>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel slip" id="slip">
+      <div class="panel-head"><h2>Costing slip</h2></div>
+
+      <div class="lines">
+        <div class="line"><span class="lbl">Ingredients used</span><span class="val" id="sIngredients">—</span></div>
+        <div class="line"><span class="lbl" id="sPackagingLbl">Packaging</span><span class="val" id="sPackaging">—</span></div>
+        <div class="line"><span class="lbl">Gas / power</span><span class="val" id="sExtras">—</span></div>
+        <div class="line"><span class="lbl" id="sLabourLbl">Your time</span><span class="val" id="sLabour">—</span></div>
+        <div class="line total"><span class="lbl">Batch costs you</span><span class="val" id="sBatch">—</span></div>
+        <div class="line"><span class="lbl" id="sPerItemLbl">Cost per item</span><span class="val" id="sPerItem">—</span></div>
+      </div>
+
+      <div class="price-card">
+        <div class="cap">Sell each one for</div>
+        <div class="price-big" id="sPrice">—</div>
+        <div class="price-sub" id="sPriceSub">—</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat good"><div class="k">Profit per item</div><div class="v" id="sProfitItem">—</div></div>
+        <div class="stat good"><div class="k">Profit per batch</div><div class="v" id="sProfitBatch">—</div></div>
+        <div class="stat"><div class="k">Real margin</div><div class="v" id="sMargin">—</div></div>
+        <div class="stat"><div class="k">Break even at</div><div class="v" id="sBreakEven">—</div></div>
+      </div>
+
+      <div id="flag" hidden></div>
+
+      <div class="slip-actions">
+        <button class="btn" id="copy">Copy breakdown</button>
+      </div>
+      <textarea id="copySink" class="sr" aria-hidden="true" tabindex="-1"></textarea>
+    </aside>
+  </div>
+
+  <div class="recipes">
+    <div class="recipes-grid">
+      <label class="field"><span>Save this batch as</span>
+        <input type="text" id="recipeName" placeholder="Banana bread"></label>
+      <div class="row2">
+        <button class="btn btn-primary" id="save">Save</button>
+      </div>
+      <label class="field"><span>Saved batches</span>
+        <select id="recipeList"><option value="">— none saved —</option></select></label>
+      <div class="row2">
+        <button class="btn" id="load">Load</button>
+        <button class="btn btn-ghost" id="delete">Delete</button>
+        <button class="btn btn-ghost" id="blank">Start blank</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tally">
+    <div><div class="k">Cost each</div><div class="v" id="tCost">—</div></div>
+    <div style="text-align:right"><div class="k">Sell each</div><div class="v sell" id="tPrice">—</div></div>
+  </div>
+
+  <footer class="note">
+    Opens with an example banana-bread batch so you can see the shape of it — change any number and the slip updates. Saved batches live in this browser only.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- units ---------------- */
+  var UNITS = {
+    weight:{ g:1, kg:1000, oz:28.3495, lb:453.592 },
+    volume:{ ml:1, L:1000, tsp:4.92892, tbsp:14.7868, cup:236.588 },
+    count:{ each:1, dozen:12 }
+  };
+  function familyOf(u){
+    for(var f in UNITS){ if(Object.prototype.hasOwnProperty.call(UNITS[f],u)) return f; }
+    return "count";
+  }
+  function toBase(q,u){ var f=familyOf(u); return (Number(q)||0) * UNITS[f][u]; }
+  function unitOptions(family,selected){
+    var out="";
+    for(var u in UNITS[family]){
+      out += '<option value="'+u+'"'+(u===selected?' selected':'')+'>'+u+'</option>';
+    }
+    return out;
+  }
+
+  /* ---------------- currency ---------------- */
+  var CURRENCIES = { JMD:"J$", USD:"$", TTD:"TT$", XCD:"EC$", CAD:"C$", GBP:"£", EUR:"€" };
+  function money(n){
+    if(!isFinite(n)) n = 0;
+    return CURRENCIES[state.currency] + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function qty(n){
+    if(!isFinite(n)) n = 0;
+    return (Math.round(n*1000)/1000).toLocaleString("en-US",{maximumFractionDigits:3});
+  }
+
+  /* ---------------- state ---------------- */
+  var uid = 0;
+  function ing(name,bq,bu,price,uq,uu){
+    return { id:"i"+(++uid), name:name, boughtQty:bq, boughtUnit:bu, price:price, usedQty:uq, usedUnit:uu };
+  }
+  function sampleState(){
+    return {
+      currency:"JMD", itemName:"slices", yieldCount:10,
+      packaging:15, batchExtras:120, labourHours:1.5, labourRate:0,
+      mode:"markup", markup:200, margin:65, rounding:10,
+      ingredients:[
+        ing("Bananas",12,"each",350,3,"each"),
+        ing("Flour",2,"kg",420,500,"g"),
+        ing("Brown sugar",1,"kg",280,250,"g"),
+        ing("Butter",454,"g",690,115,"g"),
+        ing("Eggs",12,"each",600,2,"each"),
+        ing("Vanilla",60,"ml",390,10,"ml"),
+        ing("Baking soda",450,"g",260,5,"g")
+      ]
+    };
+  }
+  function blankState(){
+    var s = sampleState();
+    s.itemName=""; s.yieldCount=1; s.packaging=0; s.batchExtras=0; s.labourHours=0;
+    s.ingredients=[ ing("",1,"each",0,1,"each") ];
+    return s;
+  }
+  var state = sampleState();
+
+  /* ---------------- math ---------------- */
+  function rowCost(r){
+    var boughtBase = toBase(r.boughtQty, r.boughtUnit);
+    var usedBase   = toBase(r.usedQty, r.usedUnit);
+    var price      = Number(r.price)||0;
+    var perBase    = boughtBase > 0 ? price/boughtBase : 0;
+    return {
+      boughtBase:boughtBase, usedBase:usedBase, perBase:perBase,
+      cost: perBase * usedBase,
+      leftBase: boughtBase - usedBase,
+      leftValue: perBase * (boughtBase - usedBase),
+      over: usedBase > boughtBase + 1e-9
+    };
+  }
+  function compute(){
+    var ingredients = 0, over = false;
+    for(var i=0;i<state.ingredients.length;i++){
+      var c = rowCost(state.ingredients[i]);
+      ingredients += c.cost;
+      if(c.over) over = true;
+    }
+    var n          = Math.max(1, Math.floor(Number(state.yieldCount)||1));
+    var packaging  = (Number(state.packaging)||0) * n;
+    var extras     = Number(state.batchExtras)||0;
+    var labour     = (Number(state.labourHours)||0) * (Number(state.labourRate)||0);
+    var batch      = ingredients + packaging + extras + labour;
+    var perItem    = batch / n;
+
+    var raw;
+    if(state.mode === "margin"){
+      var m = Math.min(99, Math.max(0, Number(state.margin)||0));
+      raw = perItem / (1 - m/100);
+    } else {
+      raw = perItem * (1 + (Number(state.markup)||0)/100);
+    }
+    var step  = Number(state.rounding)||0;
+    var price = step > 0 ? Math.ceil(raw/step)*step : Math.round(raw*100)/100;
+
+    var profitItem  = price - perItem;
+    var profitBatch = profitItem * n;
+    var realMargin  = price > 0 ? (profitItem/price)*100 : 0;
+    var breakEven   = price > 0 ? Math.ceil(batch/price) : 0;
+
+    return { ingredients:ingredients, packaging:packaging, extras:extras, labour:labour,
+             batch:batch, perItem:perItem, n:n, raw:raw, price:price,
+             profitItem:profitItem, profitBatch:profitBatch, realMargin:realMargin,
+             breakEven:breakEven, over:over };
+  }
+
+  /* ---------------- rendering ---------------- */
+  var rowsEl = document.getElementById("rows");
+
+  function renderRows(){
+    var html = "";
+    for(var i=0;i<state.ingredients.length;i++){
+      var r = state.ingredients[i];
+      var fam = familyOf(r.boughtUnit);
+      html +=
+        '<div class="ing" data-id="'+r.id+'">'+
+          '<div class="ing-head">'+
+            '<input type="text" id="'+r.id+'-name" data-k="name" value="'+escAttr(r.name)+'" placeholder="Ingredient name" aria-label="Ingredient name">'+
+            '<button type="button" class="del" data-del="'+r.id+'" aria-label="Remove ingredient">&times;</button>'+
+          '</div>'+
+          '<div class="ing-grid">'+
+            '<fieldset class="grp"><legend>Bought</legend><div class="grp-cols">'+
+              '<label class="field"><span>Amount</span><input type="number" id="'+r.id+'-bq" data-k="boughtQty" min="0" step="any" inputmode="decimal" value="'+r.boughtQty+'"></label>'+
+              '<label class="field"><span>Unit</span><select id="'+r.id+'-bu" data-k="boughtUnit">'+unitOptions(fam,r.boughtUnit)+optGroupsOther(fam)+'</select></label>'+
+              '<label class="field"><span>Price paid</span><input type="number" id="'+r.id+'-p" data-k="price" min="0" step="any" inputmode="decimal" value="'+r.price+'"></label>'+
+            '</div></fieldset>'+
+            '<fieldset class="grp used"><legend>Used in batch</legend><div class="grp-cols">'+
+              '<label class="field"><span>Amount</span><input type="number" id="'+r.id+'-uq" data-k="usedQty" min="0" step="any" inputmode="decimal" value="'+r.usedQty+'"></label>'+
+              '<label class="field"><span>Unit</span><select id="'+r.id+'-uu" data-k="usedUnit">'+unitOptions(fam,r.usedUnit)+'</select></label>'+
+            '</div></fieldset>'+
+          '</div>'+
+          '<div class="ing-foot">'+
+            '<span class="ing-cost" id="'+r.id+'-cost">—</span>'+
+            '<span class="ing-note" id="'+r.id+'-note"></span>'+
+          '</div>'+
+        '</div>';
+    }
+    rowsEl.innerHTML = html;
+    recalc();
+  }
+
+  // lets you switch an ingredient between families (e.g. "each" -> "g")
+  function optGroupsOther(current){
+    var out = "";
+    for(var f in UNITS){
+      if(f === current) continue;
+      for(var u in UNITS[f]) out += '<option value="'+u+'">'+u+'</option>';
+    }
+    return out;
+  }
+  function escAttr(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+
+  function recalc(){
+    for(var i=0;i<state.ingredients.length;i++){
+      var r = state.ingredients[i], c = rowCost(r);
+      var costEl = document.getElementById(r.id+"-cost");
+      var noteEl = document.getElementById(r.id+"-note");
+      var card   = rowsEl.querySelector('[data-id="'+r.id+'"]');
+      if(!costEl) continue;
+      costEl.textContent = money(c.cost);
+      if(c.over){
+        noteEl.innerHTML = "needs more than you bought — buy about <b>" +
+          qty(Math.ceil(c.usedBase / (c.boughtBase||1))) + "&times;</b> that purchase";
+      } else {
+        noteEl.innerHTML = "used <b>" + qty(Number(r.usedQty)||0) + " " + r.usedUnit + "</b> of " +
+          qty(Number(r.boughtQty)||0) + " " + r.boughtUnit +
+          " &middot; <b>" + qty(c.leftBase / UNITS[familyOf(r.usedUnit)][r.usedUnit]) + " " + r.usedUnit +
+          "</b> left worth <b>" + money(c.leftValue) + "</b>";
+      }
+      if(card) card.classList.toggle("over", c.over);
+    }
+
+    var t = compute();
+    var item  = (state.itemName||"item").trim() || "item";
+    var single = item.replace(/s$/,"");
+
+    set("sIngredients", money(t.ingredients));
+    set("sPackagingLbl", "Packaging × " + t.n);
+    set("sPackaging", money(t.packaging));
+    set("sExtras", money(t.extras));
+    set("sLabourLbl", "Your time" + ((Number(state.labourHours)||0) ? " (" + qty(state.labourHours) + " hr)" : ""));
+    set("sLabour", money(t.labour));
+    set("sBatch", money(t.batch));
+    set("sPerItemLbl", "Cost per " + single);
+    set("sPerItem", money(t.perItem));
+
+    set("sPrice", money(t.price));
+    set("sPriceSub", "per " + single + " · " + t.n + " " + item + " from this batch");
+    set("sProfitItem", money(t.profitItem));
+    set("sProfitBatch", money(t.profitBatch));
+    set("sMargin", (Math.round(t.realMargin*10)/10) + "%");
+    set("sBreakEven", t.breakEven + " sold");
+
+    var mEl = document.getElementById("sMargin").parentElement;
+    mEl.className = "stat " + (t.realMargin >= 50 ? "good" : t.realMargin >= 25 ? "warn" : "bad");
+
+    var flag = document.getElementById("flag");
+    var msg = "", bad = false;
+    if(t.over){ msg = "One or more ingredients use more than you bought. Fix the amounts or buy more."; bad = true; }
+    else if(t.profitItem <= 0){ msg = "At this price you lose money on every " + single + ". Raise the markup."; bad = true; }
+    else if(!(Number(state.labourRate)||0)){ msg = "Your time is costing you nothing right now. Put an hourly rate in to price it properly."; }
+    flag.hidden = !msg;
+    flag.className = "flag" + (bad ? " bad" : "");
+    flag.textContent = msg;
+
+    set("tCost", money(t.perItem));
+    set("tPrice", money(t.price));
+  }
+  function set(id,v){ var e = document.getElementById(id); if(e) e.textContent = v; }
+
+  /* ---------------- events ---------------- */
+  rowsEl.addEventListener("input", function(e){
+    var k = e.target.getAttribute("data-k"); if(!k) return;
+    var card = e.target.closest(".ing"); if(!card) return;
+    var r = find(card.getAttribute("data-id")); if(!r) return;
+    r[k] = (k === "name") ? e.target.value : e.target.value;
+    recalc();
+  });
+  rowsEl.addEventListener("change", function(e){
+    var k = e.target.getAttribute("data-k");
+    if(k !== "boughtUnit" && k !== "usedUnit") return;
+    var card = e.target.closest(".ing");
+    var r = find(card.getAttribute("data-id")); if(!r) return;
+    r[k] = e.target.value;
+    if(k === "boughtUnit" && familyOf(r.usedUnit) !== familyOf(r.boughtUnit)){
+      r.usedUnit = r.boughtUnit;
+      renderRows();
+      return;
+    }
+    recalc();
+  });
+  rowsEl.addEventListener("click", function(e){
+    var id = e.target.getAttribute("data-del"); if(!id) return;
+    state.ingredients = state.ingredients.filter(function(r){ return r.id !== id; });
+    if(!state.ingredients.length) state.ingredients.push(ing("",1,"each",0,1,"each"));
+    renderRows();
+  });
+  function find(id){
+    for(var i=0;i<state.ingredients.length;i++) if(state.ingredients[i].id===id) return state.ingredients[i];
+    return null;
+  }
+
+  document.getElementById("add").addEventListener("click", function(){
+    state.ingredients.push(ing("",1,"each",0,1,"each"));
+    renderRows();
+    var last = rowsEl.lastElementChild;
+    if(last) last.querySelector("input").focus();
+  });
+
+  var simple = ["yield","itemName","packaging","batchExtras","labourHours","labourRate","markup","margin"];
+  var keyFor = { "yield":"yieldCount" };
+  simple.forEach(function(id){
+    document.getElementById(id).addEventListener("input", function(e){
+      state[keyFor[id] || id] = (id === "itemName") ? e.target.value : e.target.value;
+      recalc();
+    });
+  });
+  document.getElementById("rounding").addEventListener("change", function(e){
+    state.rounding = e.target.value; recalc();
+  });
+  document.getElementById("currency").addEventListener("change", function(e){
+    state.currency = e.target.value; recalc();
+  });
+
+  function setMode(m){
+    state.mode = m;
+    document.getElementById("modeMarkup").setAttribute("aria-pressed", String(m==="markup"));
+    document.getElementById("modeMargin").setAttribute("aria-pressed", String(m==="margin"));
+    document.getElementById("markupField").hidden = (m !== "markup");
+    document.getElementById("marginField").hidden = (m !== "margin");
+    recalc();
+  }
+  document.getElementById("modeMarkup").addEventListener("click", function(){ setMode("markup"); });
+  document.getElementById("modeMargin").addEventListener("click", function(){ setMode("margin"); });
+
+  /* ---------------- copy ---------------- */
+  document.getElementById("copy").addEventListener("click", function(){
+    var t = compute();
+    var item = (state.itemName||"item").trim() || "item";
+    var L = [];
+    L.push("COSTING — " + (document.getElementById("recipeName").value || "untitled batch"));
+    L.push("");
+    for(var i=0;i<state.ingredients.length;i++){
+      var r = state.ingredients[i], c = rowCost(r);
+      L.push("  " + (r.name || "(unnamed)") + " — used " + qty(r.usedQty) + " " + r.usedUnit +
+             " of " + qty(r.boughtQty) + " " + r.boughtUnit + " @ " + money(r.price) + "  =  " + money(c.cost));
+    }
+    L.push("");
+    L.push("  Ingredients        " + money(t.ingredients));
+    L.push("  Packaging x" + t.n + "      " + money(t.packaging));
+    L.push("  Gas / power        " + money(t.extras));
+    L.push("  Your time          " + money(t.labour));
+    L.push("  BATCH TOTAL        " + money(t.batch));
+    L.push("");
+    L.push("  Makes " + t.n + " " + item);
+    L.push("  Cost each          " + money(t.perItem));
+    L.push("  SELL EACH FOR      " + money(t.price));
+    L.push("  Profit each        " + money(t.profitItem));
+    L.push("  Profit per batch   " + money(t.profitBatch));
+    L.push("  Break even after   " + t.breakEven + " sold");
+    var text = L.join("\n");
+    var btn = this;
+    function done(ok){ btn.textContent = ok ? "Copied" : "Press Ctrl+C"; setTimeout(function(){ btn.textContent = "Copy breakdown"; }, 1800); }
+    try{
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ fallback(); });
+    }catch(e){ fallback(); }
+    function fallback(){
+      var sink = document.getElementById("copySink");
+      sink.classList.remove("sr"); sink.style.position="fixed"; sink.style.opacity="0";
+      sink.value = text; sink.select();
+      try{ document.execCommand("copy"); done(true); }catch(e2){ done(false); }
+      sink.classList.add("sr"); sink.style.position=""; sink.style.opacity="";
+    }
+  });
+
+  /* ---------------- save / load ---------------- */
+  var KEY = "proofprice.recipes.v1";
+  function readStore(){
+    try{ return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ return {}; }
+  }
+  function writeStore(o){
+    try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){}
+  }
+  function refreshList(sel){
+    var store = readStore(), names = Object.keys(store).sort();
+    var el = document.getElementById("recipeList");
+    el.innerHTML = names.length
+      ? names.map(function(n){ return '<option value="'+escAttr(n)+'">'+escAttr(n)+'</option>'; }).join("")
+      : '<option value="">— none saved —</option>';
+    if(sel && names.indexOf(sel) > -1) el.value = sel;
+  }
+  document.getElementById("save").addEventListener("click", function(){
+    var name = (document.getElementById("recipeName").value || "").trim();
+    if(!name){ document.getElementById("recipeName").focus(); return; }
+    var store = readStore();
+    store[name] = JSON.parse(JSON.stringify(state));
+    writeStore(store); refreshList(name);
+    var b = this; b.textContent = "Saved"; setTimeout(function(){ b.textContent = "Save"; }, 1500);
+  });
+  document.getElementById("load").addEventListener("click", function(){
+    var name = document.getElementById("recipeList").value; if(!name) return;
+    var store = readStore(); if(!store[name]) return;
+    state = store[name];
+    if(!state.ingredients || !state.ingredients.length) state.ingredients = [ ing("",1,"each",0,1,"each") ];
+    document.getElementById("recipeName").value = name;
+    syncInputs(); renderRows();
+  });
+  document.getElementById("delete").addEventListener("click", function(){
+    var name = document.getElementById("recipeList").value; if(!name) return;
+    var store = readStore(); delete store[name]; writeStore(store); refreshList();
+  });
+  document.getElementById("blank").addEventListener("click", function(){
+    state = blankState();
+    document.getElementById("recipeName").value = "";
+    syncInputs(); renderRows();
+  });
+
+  function syncInputs(){
+    document.getElementById("currency").value   = state.currency || "JMD";
+    document.getElementById("yield").value      = state.yieldCount;
+    document.getElementById("itemName").value   = state.itemName || "";
+    document.getElementById("packaging").value  = state.packaging;
+    document.getElementById("batchExtras").value= state.batchExtras;
+    document.getElementById("labourHours").value= state.labourHours;
+    document.getElementById("labourRate").value = state.labourRate;
+    document.getElementById("markup").value     = state.markup;
+    document.getElementById("margin").value     = state.margin;
+    document.getElementById("rounding").value   = String(state.rounding);
+    setMode(state.mode || "markup");
+  }
+
+  /* ---------------- boot ---------------- */
+  document.getElementById("recipeName").value = "Banana bread";
+  syncInputs();
+  renderRows();
+  refreshList();
+})();
+</script>
