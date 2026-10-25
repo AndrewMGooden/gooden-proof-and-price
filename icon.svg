@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gooden's Proof and Price">
+  <rect width="512" height="512" rx="104" fill="#0B7A47"/>
+  <!-- a costing slip with a torn bottom edge -->
+  <path d="M128 96h256v300l-32 32-32-32-32 32-32-32-32 32-32-32-32 32-32-32z" fill="#F3F6F2"/>
+  <rect x="170" y="160" width="172" height="22" rx="11" fill="#0B7A47" opacity=".31"/>
+  <rect x="170" y="212" width="126" height="22" rx="11" fill="#0B7A47" opacity=".31"/>
+  <rect x="170" y="264" width="150" height="22" rx="11" fill="#0B7A47" opacity=".31"/>
+  <!-- the total, in gold -->
+  <rect x="170" y="326" width="172" height="30" rx="15" fill="#D89A2C"/>
+</svg>
